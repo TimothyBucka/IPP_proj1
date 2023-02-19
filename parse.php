@@ -1,6 +1,7 @@
 <?php
 
 include "errors.php";
+include "XMLgenerator.php";
 
 ini_set('display_errors', 'stderr');
 
@@ -40,6 +41,7 @@ class program {
                 exit(errors::$error_codes["params"]);
             }
             self::print_help();
+            exit(errors::$error_codes["success"]);
         }
     }
 
@@ -64,24 +66,27 @@ class parser {
     }
 
     private static function trim_line($line) {
-        $line = trim($line);
         $comment = strpos($line, "#");
         if ($comment !== false) {
             self::$nof_comments++;
             $line = substr($line, 0, $comment);
         }
+        $line = trim($line);
         return $line;
     }
 
     private static function instruction($line) {
-        
+        echo $line."\n";
     }
 
     public static function parse() {
+        $xml = new XMLgen(self::$language);
+
         while (($line = fgets(STDIN)) !== false) {
             $line = self::trim_line($line);
             if ($line !== "") {
                 if (!self::$header && strcasecmp($line, ".".self::$language) === 0) {
+                    $xml->program_start(self::$language);
                     self::$header = true;
                 } else if (!self::$header) {        // no header at the start and not empty line
                     exit(errors::$error_codes["header"]);
