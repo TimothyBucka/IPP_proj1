@@ -56,13 +56,114 @@ class program {
 }
 
 class parser {
+    private static $op_codes = [
+        "MOVE" => ["var", "symb"],
+        "CREATEFRAME" => [],
+        "PUSHFRAME" => [],
+        "POPFRAME" => [],
+        "DEFVAR" => ["var"],
+        "CALL" => ["label"],
+        "RETURN" => [],
+        "PUSHS" => ["symb"],
+        "POPS" => ["var"],
+        "ADD" => ["var", "symb", "symb"],
+        "SUB" => ["var", "symb", "symb"],
+        "MUL" => ["var", "symb", "symb"],
+        "IDIV" => ["var", "symb", "symb"],
+        "LT" => ["var", "symb", "symb"],
+        "GT" => ["var", "symb", "symb"],
+        "EQ" => ["var", "symb", "symb"],
+        "AND" => ["var", "symb", "symb"],
+        "OR" => ["var", "symb", "symb"],
+        "NOT" => ["var", "symb"],
+        "INT2CHAR" => ["var", "symb"],
+        "STRI2INT" => ["var", "symb", "symb"],
+        "READ" => ["var", "type"],
+        "WRITE" => ["symb"],
+        "CONCAT" => ["var", "symb", "symb"],
+        "STRLEN" => ["var", "symb"],
+        "GETCHAR" => ["var", "symb", "symb"],
+        "SETCHAR" => ["var", "symb", "symb"],
+        "TYPE" => ["var", "symb"],
+        "LABEL" => ["label"],
+        "JUMP" => ["label"],
+        "JUMPIFEQ" => ["label", "symb", "symb"],
+        "JUMPIFNEQ" => ["label", "symb", "symb"],
+        "EXIT" => ["symb"],
+        "DPRINT" => ["symb"],
+        "BREAK" => []
+    ];
     public static $nof_lines = 0;
     public static $nof_comments = 0;
     private static $language = "IPPcode23";
-    private static $header = false;
 
     function __construct($lang) {
         self::$language = $lang;
+    }
+
+    private static function var($op) {
+        if (preg_match("/^(GF|LF|TF)@[a-zA-z_\-$&%*!?][0-9a-zA-z_\-$&%*!?]*$/", $op)) {
+            return ["var", $op];
+        }
+        return false;
+    }
+
+    private static function symb($op) {
+        $var = self::var($op);
+        if ($var) {
+            return $var;
+        } else if (
+            !preg_match("/^int@-?\d+$/", $op) &&
+            !preg_match("/^bool@(true|false)$/", $op) &&
+            !preg_match("/^string@(\\\d{3}|.)*$/u", $op) &&
+            !preg_match("/^nil@nil$/", $op)
+        ) {   
+            return false;
+        } 
+
+        $op = explode("@", $op);
+        return [$op[0], str_replace(["<", ">", "&"], ["&lt", "&gt", "&amp"], $op[1])];
+    }
+
+    private static function label($op) {
+        if (!preg_match("/^[a-zA-z_\-$&%*!?][0-9a-zA-z_\-$&%*!?]*$/", $op)) {
+            return false;
+        }
+        return ["label", $op];
+    }
+
+    private static function type($op) {
+        if ($op !== "int" && $op !== "string" && $op !== "bool") {
+            return false;
+        }
+        return ["type", $op];
+    }
+
+    private static function instruction($line, $xml) {
+        $line = preg_split("/\s+/", $line);
+        $in_op_code = strtoupper($line[0]);
+
+        if (!array_key_exists($in_op_code, self::$op_codes)) {
+            exit(errors::$error_codes["op_code"]);
+        }
+
+        $xml->instruction_start(self::$nof_lines, $in_op_code);
+
+        $op_types = self::$op_codes[$in_op_code];
+        if (count($op_types) !== count($line)-1) {
+            exit(errors::$error_codes["lex_syx"]);
+        }
+        if (count($op_types) > 0) {
+            foreach (range(0, count($op_types)-1) as $index) {
+                $vals = call_user_func("self::".$op_types[$index], $line[$index+1]);
+                if (!$vals) {
+                    exit(errors::$error_codes["lex_syx"]);
+                }
+                $xml->arg($index+1, $vals[0], $vals[1]);
+            }
+        }
+
+        $xml->instruction_end();
     }
 
     private static function trim_line($line) {
@@ -75,27 +176,25 @@ class parser {
         return $line;
     }
 
-    private static function instruction($line) {
-        echo $line."\n";
-    }
-
     public static function parse() {
         $xml = new XMLgen(self::$language);
+        $header = false;
 
         while (($line = fgets(STDIN)) !== false) {
             $line = self::trim_line($line);
             if ($line !== "") {
-                if (!self::$header && strcasecmp($line, ".".self::$language) === 0) {
+                if (!$header && strcasecmp($line, ".".self::$language) === 0) {
                     $xml->program_start(self::$language);
-                    self::$header = true;
-                } else if (!self::$header) {        // no header at the start and not empty line
+                    $header = true;
+                } else if (!$header) {        // no header at the start and not empty line
                     exit(errors::$error_codes["header"]);
                 } else {
-                    self::instruction($line);
                     self::$nof_lines++;
+                    self::instruction($line, $xml);
                 }
             }
         }
+        $xml->program_end();
     }
 }
 
