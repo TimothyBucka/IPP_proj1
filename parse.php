@@ -115,7 +115,7 @@ class parser {
         } else if (
             !preg_match("/^int@(-|\+)?\d+$/", $op) &&
             !preg_match("/^bool@(true|false)$/", $op) &&
-            !preg_match("/^string@(\\\\\d{3}|\w|[!\"\$-\[\]-~])*$/u", $op) &&
+            !preg_match("/^string@(\\\\\d{3}|[^\\x00-\\x20\\x23\\x5C])*$/u", $op) &&
             !preg_match("/^nil@nil$/", $op)
         ) {
             echo $op;
