@@ -2,3 +2,8 @@ in
 input
 out
 out
+tests
+tmp
+*.jar
+test.php
+*.zip

@@ -13,6 +13,10 @@ class XMLgen {
         echo "</program>\n";
     }
 
+    public function instruction_empty($order, $opcode) {
+        echo "\t<instruction order=\"".$order."\" opcode=\"".$opcode."\"/>\n";
+    }
+
     public function instruction_start($order, $opcode) {
         echo "\t<instruction order=\"".$order."\" opcode=\"".$opcode."\">\n";
     }

@@ -102,8 +102,8 @@ class parser {
     }
 
     private static function var($op) {
-        if (preg_match("/^(GF|LF|TF)@[a-zA-z_\-$&%*!?][0-9a-zA-z_\-$&%*!?]*$/", $op)) {
-            return ["var", $op];
+        if (preg_match("/^(GF|LF|TF)@[a-zA-Z_\-$&%*!?][0-9a-zA-z_\-$&%*!?]*$/", $op)) {
+            return ["var", str_replace("&", "&amp;", $op)];
         }
         return false;
     }
@@ -113,23 +113,24 @@ class parser {
         if ($var) {
             return $var;
         } else if (
-            !preg_match("/^int@-?\d+$/", $op) &&
+            !preg_match("/^int@(-|\+)?\d+$/", $op) &&
             !preg_match("/^bool@(true|false)$/", $op) &&
-            !preg_match("/^string@(\\\d{3}|.)*$/u", $op) &&
+            !preg_match("/^string@(\\\\\d{3}|\w|[!\"\$-\[\]-~])*$/u", $op) &&
             !preg_match("/^nil@nil$/", $op)
-        ) {   
+        ) {
+            echo $op;
             return false;
         } 
 
         $op = explode("@", $op);
-        return [$op[0], str_replace(["<", ">", "&"], ["&lt", "&gt", "&amp"], $op[1])];
+        return [$op[0], strtr($op[1], ["<" => "&lt;", ">" => "&gt;", "&" => "&amp;"])];
     }
 
     private static function label($op) {
-        if (!preg_match("/^[a-zA-z_\-$&%*!?][0-9a-zA-z_\-$&%*!?]*$/", $op)) {
+        if (!preg_match("/^[a-zA-Z_\-$&%*!?][0-9a-zA-z_\-$&%*!?]*$/", $op)) {
             return false;
         }
-        return ["label", $op];
+        return ["label", str_replace("&", "&amp;", $op)];
     }
 
     private static function type($op) {
@@ -147,13 +148,12 @@ class parser {
             exit(errors::$error_codes["op_code"]);
         }
 
-        $xml->instruction_start(self::$nof_lines, $in_op_code);
-
         $op_types = self::$op_codes[$in_op_code];
         if (count($op_types) !== count($line)-1) {
             exit(errors::$error_codes["lex_syx"]);
         }
         if (count($op_types) > 0) {
+            $xml->instruction_start(self::$nof_lines, $in_op_code);
             foreach (range(0, count($op_types)-1) as $index) {
                 $vals = call_user_func("self::".$op_types[$index], $line[$index+1]);
                 if (!$vals) {
@@ -161,9 +161,10 @@ class parser {
                 }
                 $xml->arg($index+1, $vals[0], $vals[1]);
             }
+            $xml->instruction_end();
+        } else {
+            $xml->instruction_empty(self::$nof_lines, $in_op_code);
         }
-
-        $xml->instruction_end();
     }
 
     private static function trim_line($line) {
