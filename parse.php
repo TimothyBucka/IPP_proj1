@@ -122,8 +122,11 @@ class parser {
             return false;
         } 
 
-        $op = explode("@", $op);
-        return [$op[0], strtr($op[1], ["<" => "&lt;", ">" => "&gt;", "&" => "&amp;"])];
+        $cut = strpos($op, "@");
+        $op1 = substr($op, 0, $cut);
+        $op2 = substr($op, $cut+1);
+
+        return [$op1, strtr($op2, ["<" => "&lt;", ">" => "&gt;", "&" => "&amp;"])];
     }
 
     private static function label($op) {
