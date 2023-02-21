@@ -11,6 +11,8 @@ class errors {
         "header" => 21,   // wrong header
         "op_code" => 22,  // wrong operation code
         "lex_syx" => 23,  // lexical or syntax error
+
+        "semantic" => 52,
     
         "internal" => 99 // internal error
     ];
